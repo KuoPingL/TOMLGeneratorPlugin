@@ -39,6 +39,14 @@ These format will be converted into
 
 # Versions 
 
+- v1.0-beta
+  - Extracted Parser, Regex and classes from `GenerateToml.kt`. 
+  - Perform simple tests on Parser
+  - (fix) Parser failed to recognize incorrect version format, namely "1.1.1" vs "1-1"
+
+- v1.0-SNAPSHOT 
+  - First commit 
+  - (required) Need to clean up the code and add some testings
 
 # CopyRight 
 Copyright (c) <year> <copyright holders>
