@@ -22,6 +22,12 @@ intellij {
   plugins.set(listOf(/* Plugin Dependencies */))
 }
 
+
+tasks.register("testThenZip") {
+  dependsOn(tasks.test)
+  dependsOn(tasks.buildPlugin)
+}
+
 tasks {
   // Set the JVM compatibility versions
   withType<JavaCompile> {
