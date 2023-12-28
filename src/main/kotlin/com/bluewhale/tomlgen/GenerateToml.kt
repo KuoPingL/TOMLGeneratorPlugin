@@ -10,7 +10,6 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
-import com.bluewhale.tomlgen.Regex
 
 
 class GenerateToml : AnAction() {

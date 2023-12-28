@@ -159,6 +159,7 @@ object Parser {
             val name = groupNameVersion[1]
             // Bug : the regex seems right, but it seems it caught \" inside the group
             val version = groupNameVersion[2].replace("\"", "")
+
             if (group.isNotEmpty() && name.isNotEmpty() && version.isNotEmpty()) {
                 val key = generateKeyWith(group, name)
                 return Types.Dependency(key, config, group, name, version, originalStr)
@@ -201,7 +202,7 @@ object Parser {
 
                 } else if (str.contains(VERSION)) {
 
-                    version = quotationValueRegex.find(str)?.groups?.get(1)?.value ?: ""
+                    version = Regex.VERSION_REGEX.toRegex().find(str)?.groups?.get(1)?.value ?: ""
                 }
             }
 
