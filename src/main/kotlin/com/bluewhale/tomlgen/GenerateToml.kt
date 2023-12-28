@@ -18,6 +18,7 @@ class GenerateToml: AnAction() {
 
     private val lock1 = Any()
     private val lock2 = Any()
+    private val lock3 = Any()
     private val errLock = Any()
 
     private val dataForFiles = ConcurrentHashMap<File, TypeBundle>()
@@ -55,9 +56,8 @@ class GenerateToml: AnAction() {
         const val STEP_EXTRACT_TOML = 3
         const val STEP_WRITE_IN_TEMP_TOML = 4
         const val STEP_WRITE_IN_TOML = 5
-        const val STEP_CLEAN_UP = 6
-        const val STEP_UPDATE = 7
-        const val TOTAL_STEPS = 7
+        const val STEP_UPDATE = 6
+        const val TOTAL_STEPS = 6
     }
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -99,6 +99,10 @@ class GenerateToml: AnAction() {
                         return
                     }
 
+                    progressIndicator.text = "Extracting Info from Gradle Files."
+                    progressIndicator.fraction = (STEP_EXTRACT_DEP_PLUGIN.toDouble() / TOTAL_STEPS.toDouble())
+                    Thread.sleep(500)
+
                     // 2. Reading Gradle Files -> gradleFiles.count
                     val executors = Executors.newFixedThreadPool(gradleFiles.size)
                     val tasks = mutableListOf<Callable<Unit>>()
@@ -122,8 +126,8 @@ class GenerateToml: AnAction() {
 
                         progressIndicator.text = "Extracting Data from libs.versions.toml."
                         progressIndicator.fraction = (STEP_EXTRACT_TOML.toDouble() / TOTAL_STEPS.toDouble())
-
                         Thread.sleep(500)
+
                         // read toml File
                         tomlFile?.let {
                             val content = it.readLines()
@@ -195,10 +199,13 @@ class GenerateToml: AnAction() {
                         progressIndicator.fraction = (STEP_WRITE_IN_TEMP_TOML.toDouble() / TOTAL_STEPS.toDouble())
                         Thread.sleep(500)
                         // 7. create a temp libs.versions.toml file
-                        tempTomlFile = File("$basePath/gradle/libs.versions.temp.toml")
+                        if (tomlFile == null) {
+                            tomlFile = File("$basePath/gradle/libs.versions.toml")
+                        }
+
                         try {
                             // 9. write all into temp file
-                            var writer = FileWriter(tempTomlFile!!)
+                            var writer = FileWriter(tomlFile!!)
 
                             val strBuilder = StringBuilder()
                             val dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_TIME_PATTERN))
@@ -227,22 +234,13 @@ class GenerateToml: AnAction() {
                             strBuilder.append("\n")
                             strBuilder.append(remainingTomlStr)
 
-                            writer.write(strBuilder.toString())
-
-                            writer.close()
-
                             progressIndicator.text = "Storing Data into libs.versions.toml."
                             progressIndicator.fraction = (STEP_WRITE_IN_TOML.toDouble() / TOTAL_STEPS.toDouble())
                             Thread.sleep(500)
-//                    dialog.setProgressMsg("Storing data in libs.versions.toml")
-                            writer = FileWriter("$basePath/gradle/libs.versions.toml")
+
                             writer.write(strBuilder.toString())
                             writer.close()
 
-                            progressIndicator.text = "Cleaning Up"
-                            progressIndicator.fraction = (STEP_CLEAN_UP.toDouble() / TOTAL_STEPS.toDouble())
-                            Thread.sleep(500)
-                            tempTomlFile?.delete()
                             tasks.clear()
 
                             // update files
@@ -332,24 +330,26 @@ class GenerateToml: AnAction() {
 
     @Synchronized
     private fun updateVersions(types: List<Types>) {
-        types.forEach {type ->
-            when(type) {
-                is Types.Dependency -> {
-                    if (type.version.isNotEmpty()) {
-                        if (versionsForToml.contains(type.getVersionKey()) && versionsForToml[type.getVersionKey()] != type.version) {
-                            versionsForToml[type.getVersionKey() + "-" + type.version.replace(".", "-")] = type.version
-                        } else {
-                            versionsForToml[type.getVersionKey()] = type.version
+        synchronized(lock3) {
+            types.forEach {type ->
+                when(type) {
+                    is Types.Dependency -> {
+                        if (type.version.isNotEmpty()) {
+                            if (versionsForToml.contains(type.getVersionKey()) && versionsForToml[type.getVersionKey()] != type.version) {
+                                versionsForToml[type.getVersionKey() + "-" + type.version.replace(".", "-")] = type.version
+                            } else {
+                                versionsForToml[type.getVersionKey()] = type.version
+                            }
                         }
                     }
-                }
 
-                is Types.Plugin -> {
-                    if (type.version.isNotEmpty()) {
-                        if (versionsForToml.contains(type.getVersionKey()) && versionsForToml[type.getVersionKey()] != type.version) {
-                            versionsForToml[type.getVersionKey() + "-" + type.version.replace(".", "-")] = type.version
-                        } else {
-                            versionsForToml[type.getVersionKey()] = type.version
+                    is Types.Plugin -> {
+                        if (type.version.isNotEmpty()) {
+                            if (versionsForToml.contains(type.getVersionKey()) && versionsForToml[type.getVersionKey()] != type.version) {
+                                versionsForToml[type.getVersionKey() + "-" + type.version.replace(".", "-")] = type.version
+                            } else {
+                                versionsForToml[type.getVersionKey()] = type.version
+                            }
                         }
                     }
                 }
@@ -533,6 +533,7 @@ class GenerateToml: AnAction() {
         progressIndicator.text = "Find root/gradle/genTomlLog.txt for Error"
         progressIndicator.fraction = 1.toDouble()
         progressIndicator.stop()
+        Thread.sleep(1000)
     }
 
     sealed class Types {
@@ -616,5 +617,4 @@ class GenerateToml: AnAction() {
      * file : the original file that these dependencies and plugins were from
      */
     data class TypeBundle(val dependencies: Map<String, String>, val plugins: Map<String, String>)
-
 }
